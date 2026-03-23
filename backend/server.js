@@ -37,52 +37,50 @@ function startLoop() {
   }, 2500); 
 }
 
-// Global Buffer to hold fragmented data
 let serialBuffer = Buffer.alloc(0);
 
 port.on("data", (chunk) => {
-  // 1. Add new data to our existing buffer
   serialBuffer = Buffer.concat([serialBuffer, chunk]);
 
-  // 2. Process the buffer while it has at least a header (5 bytes: FF, Len, Op, Status_Hi, Status_Lo)
   while (serialBuffer.length >= 5) {
     if (serialBuffer[0] !== 0xFF) {
-      // Shift buffer until we find a start byte
       serialBuffer = serialBuffer.subarray(1);
       continue;
     }
 
     const dataLength = serialBuffer[1];
-    const totalPacketLength = dataLength + 5 + 2; // Header(5) + Data + CRC(2)
+    const totalPacketLength = dataLength + 5 + 2; 
 
-    if (serialBuffer.length < totalPacketLength) {
-      // We don't have the full packet yet, wait for next 'data' event
-      break;
-    }
+    if (serialBuffer.length < totalPacketLength) break;
 
-    // 3. Extract the full packet
     const packet = serialBuffer.subarray(0, totalPacketLength);
-    const opCode = packet[2];
-    const hexString = packet.toString("hex").toUpperCase();
+    const hex = packet.toString("hex").toUpperCase();
 
-    // 4. Check for Tag Result (OpCode 0x29)
-    if (opCode === 0x29) {
-      const startIdx = hexString.indexOf("E2");
-      if (startIdx !== -1) {
-        const epc = hexString.substring(startIdx, startIdx + 24);
-        
-        // RSSI is usually 3 bytes before the CRC end
-        const rssiRaw = packet[packet.length - 3];
-        const rssi = rssiRaw > 128 ? rssiRaw - 256 : rssiRaw;
+    if (packet[2] === 0x29 && hex.includes("E2")) {
+      const epcStart = hex.indexOf("E2");
+      const epc = hex.substring(epcStart, epcStart + 24);
 
-        console.log(`✨ TAG DETECTED: ${epc} | RSSI: ${rssi} dBm`);
-        io.emit("rfid-data", { epc, rssi: `${rssi} dBm`, timestamp: new Date().toLocaleTimeString() });
+      // The byte immediately after the 24-char (12-byte) EPC
+      const rssiByteIdx = (epcStart / 2) + 12;
+      const rssiRaw = packet[rssiByteIdx];
+      
+      // Mercury API RSSI Logic: If the value is > 128, it's already negative.
+      // If it's a high positive number like 92 (5C), we subtract 128.
+      let rssi = rssiRaw > 128 ? rssiRaw - 256 : rssiRaw - 128;
+
+      // Ensure we don't show impossible values
+      if (rssi > 0) rssi = -Math.abs(rssi); 
+
+      if (epc.length === 24) {
+        console.log(`✨ TAG: ${epc} | RSSI: ${rssi} dBm`);
+        io.emit("rfid-data", { 
+          epc, 
+          rssi: `${rssi} dBm`, 
+          timestamp: new Date().toLocaleTimeString() 
+        });
       }
     }
-
-    // 5. Remove the processed packet from the buffer
     serialBuffer = serialBuffer.subarray(totalPacketLength);
   }
 });
-
 server.listen(5000, () => console.log("🚀 Server running on port 5000"));
