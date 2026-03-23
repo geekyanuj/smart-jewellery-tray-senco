@@ -1,0 +1,11 @@
+@import "tailwindcss";
+
+@theme {
+  /* You can define your custom jewellery gold here if you want */
+  --color-gold: #d4af37;
+}
+
+/* Custom glow for the hardware feel */
+@utility glow-green {
+  box-shadow: 0 0 20px rgba(0, 255, 0, 0.15);
+}

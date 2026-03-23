@@ -1,0 +1,58 @@
+const express = require("express");
+const cors = require("cors");
+const { SerialPort } = require('serialport');
+const http = require('http');
+const { Server } = require('socket.io');
+require("dotenv").config();
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+const server = http.createServer(app);
+const io = new Server(server, {
+    cors: { origin: "*" }
+});
+
+// --- SERIAL CONFIGURATION ---
+const COM_PORT = 'COM3'; // Change this to your URA COM port
+const BAUD_RATE = 115200;
+
+const port = new SerialPort({ 
+    path: COM_PORT, 
+    baudRate: BAUD_RATE,
+    autoOpen: true 
+});
+
+port.on('open', () => console.log(`Serial Port ${COM_PORT} Opened`));
+
+// Logic to parse ThingMagic Binary Packets
+port.on('data', (data) => {
+    // Mercury API packets start with 0xFF
+    if (data[0] === 0xFF) {
+        const hex = data.toString('hex').toUpperCase();
+        
+        // Basic parser: In many URA configs, EPC starts at a specific offset
+        // This extracts a 12-byte (24 char) EPC string
+        // Note: Offset might shift based on your URA 'Metadata' settings
+        const epc = hex.substring(20, 44); 
+        
+        if (epc.length === 24) {
+            const tagData = {
+                epc: epc,
+                rssi: data[data.length - 3] ? `-${256 - data[data.length - 3]}` : "N/A",
+                timestamp: new Date().toLocaleTimeString()
+            };
+            
+            console.log("Tag Detected:", epc);
+            io.emit("rfid-scan", tagData);
+        }
+    }
+});
+
+app.get("/", (req, res) => {
+    res.send("RFID MERN Server Running...");
+});
+
+const PORT = process.env.PORT || 5000;
+server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
