@@ -14,9 +14,20 @@ const BAUD_RATE = 9600;
 const TAG_TIMEOUT = 3000; // 3 seconds of silence = Tag Removed
 
 // Mapping EPCs to Products
+// const JEWELRY_DATABASE = {
+//   "E200001C121502130840C05E": { name: "Senco Sutra - the Mangasutra Collection", video: "senco_sutra.mp4" },
+//   "E200001C121502010840B00C": { name: "Vivaha Collection", video: "vivaha_collection.mp4" }
+// };
+
 const JEWELRY_DATABASE = {
-  "E200001C121502130840C05E": { name: "Gold Diamond Ring", video: "gold_ring.mp4" },
-  "E200001C121502010840B00C": { name: "Silver Necklace", video: "silver_neck.mp4" }
+  "E200001C121502130840C05E": {
+    name: "Senco Sutra - the Mangasutra Collection",
+    video: "https://www.youtube.com/embed/qm7VBAvx7U0?autoplay=1&mute=1&loop=1&playlist=qm7VBAvx7U0&controls=0&modestbranding=1&rel=0"
+  },
+  "E200001C121502010840B00C": {
+    name: "Vivaha Collection",
+    video: "https://www.youtube.com/embed/EQFUXeJWjyM?autoplay=1&mute=1&loop=1&playlist=EQFUXeJWjyM&controls=0&modestbranding=1&rel=0"
+  }
 };
 
 const port = new SerialPort({ path: COM_PORT, baudRate: BAUD_RATE, autoOpen: false });
@@ -59,7 +70,7 @@ port.on("data", (chunk) => {
       const epcStart = hex.indexOf("E2");
       const epc = hex.substring(epcStart, epcStart + 24);
 
-      // RSSI Logic from our previous analysis
+      // RSSI Logic from analysis
       const rssiByteIdx = (epcStart / 2) + 12;
       const rssiRaw = packet[rssiByteIdx];
       let rssi = rssiRaw > 127 ? rssiRaw - 256 : rssiRaw - 128;
