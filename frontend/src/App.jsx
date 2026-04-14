@@ -1,17 +1,16 @@
 import React, { useEffect, useState } from "react";
 import { io } from "socket.io-client";
 
-const socket = io("http://127.0.0.1:5000");
+
+const socket = io("http://192.168.31.216:5000");
 
 function App() {
   const [activeItem, setActiveItem] = useState(null);
-  const [logs, setLogs] = useState([]);
 
   useEffect(() => {
     socket.on("rfid-data", (data) => {
       // Logic: Only update if it's the strongest tag or first tag
       setActiveItem(data);
-      setLogs((prev) => [data, ...prev].slice(0, 8));
     });
 
     socket.on("tag-removed", (data) => {
